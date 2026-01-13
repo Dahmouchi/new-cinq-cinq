@@ -414,7 +414,6 @@ export async function getStudentLiveRooms(userId: string) {
       // Lives en cours
       prisma.liveRoom.findMany({
         where: {
-          status: "LIVE",
           gradeId: user.gradeId,
         },
         include: {

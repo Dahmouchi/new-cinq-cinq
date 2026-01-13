@@ -359,24 +359,156 @@ const LivesView = ({
               </div>
             ) : (
               <div>
-                {/* Live Rooms Section */}
+                {/* Live Rooms Section organized by Subject */}
                 {user.registerCode && !loading && (
                   <div className="">
-                    {/* Filtered Live Sessions */}
-                    {filteredLiveRooms.length > 0 && (
-                      <div className="mb-8">
-                        <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-4">
-                          {filteredLiveRooms.map((room: any) => (
-                            <StudentLiveCard
-                              key={room.id}
-                              room={room}
-                              userId={user.id}
-                              isRegistered={registeredLives.has(room.id)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    {/* Group lives by subject */}
+                    {(() => {
+                      // Group filtered rooms by subject
+                      const roomsBySubject = filteredLiveRooms.reduce(
+                        (acc: any, room: any) => {
+                          const subjectId = room.subject?.id || "no-subject";
+                          const subjectName =
+                            room.subject?.name || "Sans matière";
+
+                          if (!acc[subjectId]) {
+                            acc[subjectId] = {
+                              subject: room.subject || {
+                                id: "no-subject",
+                                name: "Sans matière",
+                              },
+                              upcomingLive: null,
+                              recordedLives: [],
+                            };
+                          }
+
+                          // Categorize rooms into upcoming (LIVE or SCHEDULED) and recorded (ENDED)
+                          if (
+                            room.status === "LIVE" ||
+                            room.status === "SCHEDULED"
+                          ) {
+                            // For upcoming, keep only the next one (earliest startsAt)
+                            if (
+                              !acc[subjectId].upcomingLive ||
+                              (room.startsAt &&
+                                acc[subjectId].upcomingLive.startsAt &&
+                                new Date(room.startsAt) <
+                                  new Date(
+                                    acc[subjectId].upcomingLive.startsAt
+                                  ))
+                            ) {
+                              acc[subjectId].upcomingLive = room;
+                            }
+                          } else if (room.status === "ENDED") {
+                            acc[subjectId].recordedLives.push(room);
+                          }
+
+                          return acc;
+                        },
+                        {}
+                      );
+
+                      // Sort recorded lives by endedAt descending (most recent first)
+                      Object.values(roomsBySubject).forEach(
+                        (subjectData: any) => {
+                          subjectData.recordedLives.sort((a: any, b: any) => {
+                            const dateA = a.endedAt
+                              ? new Date(a.endedAt).getTime()
+                              : 0;
+                            const dateB = b.endedAt
+                              ? new Date(b.endedAt).getTime()
+                              : 0;
+                            return dateB - dateA;
+                          });
+                        }
+                      );
+
+                      return Object.values(roomsBySubject).map(
+                        (subjectData: any) => (
+                          <div key={subjectData.subject.id} className="mb-8">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div
+                                className="w-1 h-6 rounded-full"
+                                style={{
+                                  backgroundColor:
+                                    subjectData.subject.color || "#3b82f6",
+                                }}
+                              />
+                              <h2 className="text-xl font-bold">
+                                {subjectData.subject.name}
+                              </h2>
+                            </div>
+
+                            {/* Upcoming/Next Live */}
+                            {subjectData.upcomingLive && (
+                              <div className="mb-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                                    <Video className="w-4 h-4" />
+                                    <span>Prochain Live</span>
+                                  </div>
+                                  {subjectData.upcomingLive.status ===
+                                    "LIVE" && (
+                                    <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-red-500/20 text-red-600 rounded-full">
+                                      <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+                                      </span>
+                                      EN DIRECT
+                                    </span>
+                                  )}
+                                </div>
+                                <StudentLiveCard
+                                  room={subjectData.upcomingLive}
+                                  userId={user.id}
+                                  isRegistered={registeredLives.has(
+                                    subjectData.upcomingLive.id
+                                  )}
+                                />
+                              </div>
+                            )}
+
+                            {/* Recorded Lives */}
+                            {subjectData.recordedLives.length > 0 && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="text-sm font-semibold text-muted-foreground">
+                                    Lives enregistrés
+                                  </div>
+                                  <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                                    {subjectData.recordedLives.length}
+                                  </span>
+                                </div>
+                                <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-4">
+                                  {subjectData.recordedLives.map(
+                                    (room: any) => (
+                                      <StudentLiveCard
+                                        key={room.id}
+                                        room={room}
+                                        userId={user.id}
+                                        isRegistered={registeredLives.has(
+                                          room.id
+                                        )}
+                                      />
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Empty state for subject with no lives */}
+                            {!subjectData.upcomingLive &&
+                              subjectData.recordedLives.length === 0 && (
+                                <div className="text-center py-8 bg-secondary/30 rounded-lg">
+                                  <p className="text-sm text-muted-foreground">
+                                    Aucune session disponible pour cette matière
+                                  </p>
+                                </div>
+                              )}
+                          </div>
+                        )
+                      );
+                    })()}
                   </div>
                 )}
               </div>

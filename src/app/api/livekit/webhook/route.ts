@@ -39,6 +39,7 @@ function verifyWebhook(
 
 export async function POST(req: NextRequest) {
   try {
+    console.log("Webhook received");
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
 
