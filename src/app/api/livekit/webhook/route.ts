@@ -4,7 +4,7 @@ import { WebhookEvent } from "livekit-server-sdk";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 
-// This handles the verification that the webhook is actually from LiveKit
+// Helper function to verify the LiveKit signature
 function verifyWebhook(
   body: string,
   header: string | null,
@@ -23,10 +23,9 @@ function verifyWebhook(
 
   if (auth.t === undefined || auth.s === undefined) return false;
 
-  // Check if timestamp is recent (prevent replay attacks)
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - parseInt(auth.t)) > 5 * 60) {
-    return false; // Request is too old
+    return false;
   }
 
   const sig = crypto
@@ -50,52 +49,74 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.text();
-    console.log("Webhook received", body);
+    // We keep the raw body log in case we need to debug structure again
+    // console.log("Webhook received", body);
     const header = req.headers.get("livekit-webhook-authorization");
 
-    // 1. Verify the signature (Security check)
+    // 1. Verify the signature
     const isVerified = verifyWebhook(body, header, apiKey, apiSecret);
     if (!isVerified) {
+      console.error("Invalid LiveKit Signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     // 2. Parse the Event
     const event = WebhookEvent.fromJson(JSON.parse(body));
 
+    if (!event.egressInfo)
+      return NextResponse.json({ error: "Invalid event" }, { status: 400 });
     // 3. Check if this is an Egress Ended event (Recording finished)
     if (event.event === "egress_ended") {
-      const egressEvent = event; // Type is inferred
+      // FIX 1: Use 'egressInfo.egressId' instead of 'event.id'
+      // 'event.id' is the ID of the webhook message itself.
+      // 'egressInfo.egressId' matches what we stored in the database when we started recording.
+      const egressId = event.egressInfo.egressId;
 
-      const egressId = egressEvent.id;
+      console.log(`Webhook received for Egress ID: ${egressId}`);
 
-      // The structure of the event depends on the LiveKit version,
-      // but typically the url is inside the result object.
-      // Check the logs in step 2 if this is undefined.
-      const videoUrl = egressEvent.createdAt;
+      // FIX 2: Extract the URL correctly from your JSON structure
+      // Based on your JSON: "fileResults": [{ "location": "https://..." }]
+      let videoUrl = null;
+
+      if (
+        event.egressInfo.fileResults &&
+        event.egressInfo.fileResults.length > 0
+      ) {
+        videoUrl = event.egressInfo.fileResults[0].location;
+      }
+      // Fallback for older versions or single file structure
+      else if (event.egressInfo.fileResults) {
+        videoUrl = event.egressInfo.fileResults[0].location;
+      }
 
       if (videoUrl) {
-        console.log(`Webhook received for Egress ID: ${egressId}`);
-        console.log(`Recording URL: ${videoUrl}`);
+        console.log(`Recording URL found: ${videoUrl}`);
 
         // 4. Update Database
-        // We find the room by the egressId we stored when we started recording
         const updatedRoom = await prisma.liveRoom.updateMany({
           where: {
-            egressId: egressId,
+            egressId: egressId, // This matches the ID stored in startLiveSession
           },
           data: {
-            recordingUrl: videoUrl.toString() || "",
+            recordingUrl: videoUrl, // FIX 3: Use the actual URL, not createdAt
             recordingStatus: "COMPLETED",
-            status: "ENDED", // Ensure status is ended
+            status: "ENDED",
             endedAt: new Date(),
           },
         });
 
         if (updatedRoom.count > 0) {
-          console.log("Database updated with recording URL");
+          console.log("Database updated successfully.");
         } else {
-          console.warn("No room found with that egressId");
+          console.warn(
+            `No room found with egressId: ${egressId}. Check if it matches startLiveSession ID.`
+          );
         }
+      } else {
+        console.warn(
+          "Egress event received but no URL found in payload.",
+          JSON.stringify(event.egressInfo)
+        );
       }
     }
 

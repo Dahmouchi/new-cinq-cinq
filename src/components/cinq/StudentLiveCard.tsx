@@ -19,6 +19,7 @@ import {
   User,
   PlayCircle,
   Image as ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -233,21 +234,36 @@ export function StudentLiveCard({
           </div>
         ) : room.status === "ENDED" ? (
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => router.push(`/dashboard/live/${room.id}/replay`)}
-            >
-              Voir le replay
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push(`/dashboard/live/${room.id}`)}
-              title="Voir détails"
-            >
-              <Video className="h-5 w-5" />
-            </Button>
+            {room.recordingStatus === "RECORDING" ? (
+              <div className="w-full flex items-center">
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-full"
+                  onClick={() =>
+                    router.push(`/dashboard/live/${room.id}/replay`)
+                  }
+                >
+                  Voir le replay
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => router.push(`/dashboard/live/${room.id}`)}
+                  title="Voir détails"
+                >
+                  <Video className="h-5 w-5" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                disabled
+                className="flex-1 rounded-full"
+              >
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                in progress
+              </Button>
+            )}
           </div>
         ) : null}
       </div>

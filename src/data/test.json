@@ -1,0 +1,48 @@
+{
+  "event": "egress_ended",
+  "egressInfo": {
+    "egressId": "EG_5E4bitryqxMZ",
+    "roomId": "RM_hycBMAjmt6Ub",
+    "roomName": "Test Room",
+    "status": "EGRESS_COMPLETE",
+    "startedAt": "1692627327314954481",
+    "endedAt": "1692627361394359203",
+    "updatedAt": "1692627361394359203",
+    "roomComposite": {
+      "roomName": "Test Room",
+      "layout": "speaker-dark",
+      "advanced": { "width": 640, "height": 480 },
+      "fileOutputs": [
+        {
+          "filepath": "egress-test/{time}.mp4",
+          "s3": {
+            "accessKey": "{access_key}",
+            "secret": "{secret}",
+            "region": "us-east-1",
+            "bucket": "egresses"
+          }
+        }
+      ]
+    },
+    "file": {
+      "filename": "egress-test/2023-08-21T141526.mp4",
+      "startedAt": "1692627329613481848",
+      "endedAt": "1692627357805052699",
+      "duration": "28191570851",
+      "size": "14502595",
+      "location": "https://egresses.s3.amazonaws.com/egress-test/2023-08-21T141526.mp4"
+    },
+    "fileResults": [
+      {
+        "filename": "egress-test/2023-08-21T141526.mp4",
+        "startedAt": "1692627329613481848",
+        "endedAt": "1692627357805052699",
+        "duration": "28191570851",
+        "size": "14502595",
+        "location": "https://egresses.s3.amazonaws.com/egress-test/2023-08-21T141526.mp4"
+      }
+    ]
+  },
+  "id": "EV_dh9yRrAvb7Cn",
+  "createdAt": "1768321642"
+}
